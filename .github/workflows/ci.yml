@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        platform_target:
+          - AnyCPU
+          - x86
+          - x64
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Build release executable
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $msbuild = & $vswhere -latest -products * -requires Microsoft.Component.MSBuild -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
+          if (-not $msbuild) {
+            throw "MSBuild was not found"
+          }
+
+          $outputPath = "bin\Release\${{ matrix.platform_target }}\"
+          & $msbuild Rubeus\Rubeus.csproj /m /p:Configuration=Release /p:Platform=AnyCPU /p:PlatformTarget=${{ matrix.platform_target }} /p:OutputPath=$outputPath
+          if ($LASTEXITCODE -ne 0) {
+            throw "MSBuild failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Smoke test command line
+        shell: pwsh
+        run: |
+          $executable = "Rubeus\bin\Release\${{ matrix.platform_target }}\Rubeus.exe"
+          $output = & $executable 2>&1 | Out-String
+          if ($LASTEXITCODE -ne 0) {
+            throw "Rubeus exited with code $LASTEXITCODE"
+          }
+          if ($output -notmatch "Ticket requests and renewals") {
+            throw "Rubeus usage output was not detected"
+          }
