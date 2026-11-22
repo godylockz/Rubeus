@@ -30,6 +30,22 @@ jobs:
       - name: Check out source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
+      - name: Install .NET Framework 4.0 reference assemblies
+        shell: pwsh
+        run: |
+          $package = ".netfx-reference.zip"
+          $url = "https://api.nuget.org/v3-flatcontainer/microsoft.netframework.referenceassemblies.net40/1.0.3/microsoft.netframework.referenceassemblies.net40.1.0.3.nupkg"
+          Invoke-WebRequest -Uri $url -OutFile $package
+          $actualHash = (Get-FileHash -Algorithm SHA256 $package).Hash.ToLowerInvariant()
+          $expectedHash = "54d6e20a1b61caf79395d6d71d091265e81f5a5705ac4ae52af45ca143c3c694"
+          if ($actualHash -ne $expectedHash) {
+            throw "Reference assembly package hash mismatch"
+          }
+
+          Expand-Archive -Path $package -DestinationPath .netfx-reference
+          $frameworkRoot = (Resolve-Path ".netfx-reference\build\.NETFramework").Path + "\"
+          "TARGET_FRAMEWORK_ROOT=$frameworkRoot" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Build release executable
         shell: pwsh
         run: |
@@ -40,7 +56,7 @@ jobs:
           }
 
           $outputPath = "bin\Release\${{ matrix.platform_target }}\"
-          & $msbuild Rubeus\Rubeus.csproj /m /p:Configuration=Release /p:Platform=AnyCPU /p:PlatformTarget=${{ matrix.platform_target }} /p:OutputPath=$outputPath
+          & $msbuild Rubeus\Rubeus.csproj /m /p:Configuration=Release /p:Platform=AnyCPU /p:PlatformTarget=${{ matrix.platform_target }} /p:OutputPath=$outputPath /p:TargetFrameworkRootPath=$env:TARGET_FRAMEWORK_ROOT
           if ($LASTEXITCODE -ne 0) {
             throw "MSBuild failed with exit code $LASTEXITCODE"
           }
