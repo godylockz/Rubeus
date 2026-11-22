@@ -4133,13 +4133,15 @@ Currently it only supports modifying/inserting a session key using the **/sessio
 
 ## Compile Instructions
 
-We are not planning on releasing binaries for Rubeus, so you will have to compile yourself :)
+This downstream fork publishes tagged builds and retains short-lived artifacts from successful CI runs. AnyCPU, x86, and x64 packages contain the executable, its runtime configuration, the license, and build metadata. Tagged releases also include SHA-256 checksums and GitHub build-provenance attestations.
 
-Rubeus has been built against .NET 3.5 and is compatible with [Visual Studio 2019 Community Edition](https://visualstudio.microsoft.com/vs/community/). Simply open up the project .sln, choose "Release", and build.
+Rubeus targets .NET Framework 4.0. CI verifies normal execution and reflection-based in-process loading through the matching 32-bit or 64-bit Windows PowerShell CLR 4 host.
 
 ### Targeting other .NET versions
 
-Rubeus' default build configuration is for .NET 3.5, which will fail on systems without that version installed. To target Rubeus for .NET 4 or 4.5, open the .sln solution, go to **Project** -> **Rubeus Properties** and change the "Target framework" to another version.
+.NET Framework 4.5 through 4.8 are in-place CLR 4 updates and remain backward-compatible with applications targeting .NET Framework 4.0. Separate 4.5 or 4.8 builds are therefore not produced. See [Microsoft's .NET Framework version guidance](https://learn.microsoft.com/dotnet/framework/migration-guide/versions-and-dependencies).
+
+The `dotnet` command uses modern .NET/CoreCLR and does not run this .NET Framework build. Supporting `dotnet Rubeus.dll` would require a separate SDK-style port and compatibility work for the Windows-specific APIs. A CLR 2 host would likewise require a separate .NET Framework 3.5 build, which this fork does not provide.
 
 ### Sidenote: Building Rubeus as a Library
 
